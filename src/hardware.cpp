@@ -31,6 +31,13 @@
 #include <drivers/watchdog.h>
 
 static struct device *wdt;
+struct k_timer sw_wtchdg_timer;
+
+int wdt_channel;
+int64_t check_in_time_led;
+int64_t check_in_time_control;
+int64_t check_in_time_ext_mgr;
+
 
 void watchdog_init()
 {
@@ -39,6 +46,7 @@ void watchdog_init()
         printk("Cannot get WDT device\n");
         return;
     }
+    
 }
 
 int watchdog_register(uint32_t timeout_ms)
@@ -61,6 +69,46 @@ void watchdog_start()
 void watchdog_feed(int channel_id)
 {
     wdt_feed(wdt, channel_id);
+}
+
+void check_in_led()
+{
+    check_in_time_led = k_uptime_get();
+}
+
+void check_in_control()
+{
+    check_in_time_control = k_uptime_get();
+}
+
+void check_in_ext_mgr()
+{
+    check_in_time_ext_mgr = k_uptime_get();
+    
+}
+
+void sw_watchdog(struct k_timer *timer_id)
+{
+        watchdog_feed(wdt_channel);
+
+        int64_t current_time = k_uptime_get();
+
+        if((current_time - check_in_time_led) > 1000)
+            reset_device();
+
+        if((current_time - check_in_time_control) > 200)
+            reset_device();
+
+        if((current_time - check_in_time_ext_mgr) > 3000)
+            reset_device();
+        
+}
+
+void start_sw_watchdog()
+{
+    k_timer_init(&sw_wtchdg_timer, sw_watchdog, NULL);
+    k_timer_start(&sw_wtchdg_timer, K_MSEC(10), K_MSEC(10)); 
+    wdt_channel = watchdog_register(100);
 }
 
 void start_stm32_bootloader()

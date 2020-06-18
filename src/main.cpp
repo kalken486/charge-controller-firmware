@@ -29,6 +29,10 @@
 #include "device_status.h"      // log data (error memory, min/max measurements, etc.)
 #include "data_nodes.h"         // for access to internal data via ThingSet
 
+#define MY_DEV_IRQ  24
+
+
+
 void main(void)
 {
     printf("Libre Solar Charge Controller: %s\n", CONFIG_BOARD);
@@ -46,6 +50,9 @@ void main(void)
 
     // Data Acquisition (DAQ) setup
     daq_setup();
+
+    //timer-test
+    //start_user_timer();
 
     // initialize all extensions and external communication interfaces
     ext_mgr.enable_all();
@@ -74,6 +81,7 @@ void main(void)
     // wait until all threads are spawned before activating the watchdog
     k_sleep(K_MSEC(2500));
     watchdog_start();
+    start_sw_watchdog();
 
     while (1) {
         charger.discharge_control(&bat_conf);
@@ -93,15 +101,18 @@ void main(void)
     }
 }
 
+
+
 void control_thread()
 {
     uint32_t last_call = 0;
-    int wdt_channel = watchdog_register(200);
 
     while (1) {
-        bool charging = false;
 
-        watchdog_feed(wdt_channel);
+        bool charging = false;
+        
+        //feeds sw_wtchdg
+        check_in_control();
 
         // convert ADC readings to meaningful measurement values
         daq_update();
@@ -177,10 +188,11 @@ void ext_mgr_thread()
 
     // quite long watchdog timeout as we might be dealing with slow communication (e.g. modems
     // using AT commands via serial interface)
-    int wdt_channel = watchdog_register(3000);
 
     while (1) {
-        watchdog_feed(wdt_channel);
+
+        //feeds sw_wtchdg
+        check_in_ext_mgr();
 
         uint32_t now = k_uptime_get() / 1000;
         ext_mgr.process_asap();     // approx. every millisecond

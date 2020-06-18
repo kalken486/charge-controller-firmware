@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 
+
 /**
  * Initialization of IWDG
  */
@@ -55,5 +56,25 @@ void start_stm32_bootloader();
  * Reset device
  */
 void reset_device();
+
+/**
+ * Threads (LED, Control, ext_mgr) check in for sw_watchdog
+ */
+void check_in_led();
+
+void check_in_control();
+
+void check_in_ext_mgr();
+
+/**
+ * Implements watchdog for multiple threads in software
+ */
+void sw_watchdog(struct k_timer *timer_id);
+
+/**
+ * Configure timer for software watchdog and
+ * configure actual watchdog
+ */
+void start_sw_watchdog();
 
 #endif /* HARDWARE_H */
